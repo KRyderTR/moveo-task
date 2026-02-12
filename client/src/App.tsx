@@ -13,7 +13,7 @@ export default function App() {
   }, []);
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 22 }}>
       <h1>Moveo Task</h1>
       <p>{msg}</p>
     </div>
