@@ -15,5 +15,5 @@ export default function OnboardingGuard({ children }: { children: ReactNode }) {
 
   if (state === "loading") return <div className="p-6">Loading...</div>;
   if (state === "need") return <Navigate to="/onboarding" replace />;
-  return children;
+  return <>{children}</>;
 }

@@ -14,11 +14,20 @@ router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
 router.post("/me", requireAuth, async (req: AuthedRequest, res) => {
   const { assets, investorType, contentTypes } = req.body;
 
-  if (!investorType) return res.status(400).json({ message: "investorType is required" });
+  const allowedInvestorTypes = ["HODLer", "Day Trader", "NFT Collector"] as const;
+
+  if (typeof investorType !== "string" || !allowedInvestorTypes.includes(investorType as any)) {
+    return res.status(400).json({ message: "Invalid investorType" });
+  }
 
   const prefs = await Preferences.findOneAndUpdate(
     { userId: req.userId },
-    { userId: req.userId, assets: assets || [], investorType, contentTypes: contentTypes || [] },
+    {
+      userId: req.userId,
+      assets: Array.isArray(assets) ? assets : [],
+      investorType,
+      contentTypes: Array.isArray(contentTypes) ? contentTypes : [],
+    },
     { upsert: true, new: true }
   );
 

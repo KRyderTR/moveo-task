@@ -1,20 +1,48 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Onboarding from "./pages/Onboarding";
+import Dashboard from "./pages/Dashboard";
+
+import ProtectedRoute from "./components/ProtectedRoute";
+import OnboardingGuard from "./components/OnboardingGuard";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* ברירת מחדל */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* ציבורי */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* temporary */}
-        <Route path="/dashboard" element={<div className="p-6">Dashboard (placeholder)</div>} />
-        <Route path="/onboarding" element={<div className="p-6">Onboarding (placeholder)</div>} />
+        {/* חייב להיות מחובר */}
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* חייב להיות מחובר + חייב להיות אחרי onboarding */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <OnboardingGuard>
+                <Dashboard />
+              </OnboardingGuard>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* fallback */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
