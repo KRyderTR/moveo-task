@@ -2,6 +2,8 @@ import { Router } from "express";
 import { User } from "../models/User";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { signToken } from "../utils/jwt";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
+
 
 const router = Router();
 
@@ -57,5 +59,15 @@ router.post("/login", async (req, res) => {
     },
   });
 });
+
+router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
+  const user = await User.findById(req.userId).select("_id name email");
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  res.json({
+    user: { id: user._id, name: user.name, email: user.email },
+  });
+});
+
 
 export default router;
