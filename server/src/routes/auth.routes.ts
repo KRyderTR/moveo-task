@@ -3,12 +3,25 @@ import { User } from "../models/User";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { signToken } from "../utils/jwt";
 import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
-
+import { isNonEmptyString, isValidEmail, isValidPassword } from "../utils/validation";
 
 const router = Router();
 
 router.post("/signup", async (req, res) => {
   const { name, email, password } = req.body;
+
+  // validations
+  if (!isNonEmptyString(name)) {
+    return res.status(400).json({ message: "Name is required" });
+  }
+
+  if (!isNonEmptyString(email) || !isValidEmail(email)) {
+    return res.status(400).json({ message: "Invalid email" });
+  }
+
+  if (!isNonEmptyString(password) || !isValidPassword(password)) {
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  }
 
   const existing = await User.findOne({ email });
   if (existing) {
@@ -18,8 +31,8 @@ router.post("/signup", async (req, res) => {
   const passwordHash = await hashPassword(password);
 
   const user = await User.create({
-    name,
-    email,
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
     passwordHash,
   });
 
@@ -35,10 +48,20 @@ router.post("/signup", async (req, res) => {
   });
 });
 
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+  // ✅ validations
+  if (!isNonEmptyString(email) || !isValidEmail(email)) {
+    return res.status(400).json({ message: "Invalid email" });
+  }
+
+  if (!isNonEmptyString(password)) {
+    return res.status(400).json({ message: "Password is required" });
+  }
+
+  const user = await User.findOne({ email: email.trim().toLowerCase() });
   if (!user) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
@@ -59,6 +82,7 @@ router.post("/login", async (req, res) => {
     },
   });
 });
+
 
 router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
   const user = await User.findById(req.userId).select("_id name email");
