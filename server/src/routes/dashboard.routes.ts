@@ -6,12 +6,31 @@ const router = Router();
 
 type ContentKey = "news" | "prices" | "ai" | "meme";
 
-function hasContent(contentTypes: unknown, key: ContentKey): boolean {
-  return Array.isArray(contentTypes) && contentTypes.includes(key);
+const DEFAULT_ASSETS = ["bitcoin", "ethereum", "solana"] as const;
+
+/* -------------------- Helpers -------------------- */
+
+function dateKey(d = new Date()) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
+function normalizeContentTypes(raw: unknown): ContentKey[] {
+  if (!Array.isArray(raw)) return [];
+  const allowed: ContentKey[] = ["news", "prices", "ai", "meme"];
+  return raw.filter((x): x is ContentKey => allowed.includes(x));
+}
+
+function normalizeAssets(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
+}
+
+/* -------------------- External Data (Prices) -------------------- */
+
 async function getCoinGeckoPrices(assets: string[]) {
-  const ids = (assets.length ? assets : ["bitcoin", "ethereum"]).join(",");
+  const ids = (assets.length ? assets : [...DEFAULT_ASSETS]).join(",");
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(
     ids
   )}&vs_currencies=usd&include_24hr_change=true`;
@@ -21,8 +40,9 @@ async function getCoinGeckoPrices(assets: string[]) {
 
   const json: unknown = await res.json();
 
-  // json looks like { bitcoin: { usd: 123, usd_24h_change: 1.2 }, ... }
-  if (!json || typeof json !== "object") return { source: "coingecko", items: [] };
+  if (!json || typeof json !== "object") {
+    return { source: "coingecko", items: [] as { id: string; usd: number | null; change24h: number | null }[] };
+  }
 
   const obj = json as Record<string, { usd?: number; usd_24h_change?: number }>;
 
@@ -35,43 +55,78 @@ async function getCoinGeckoPrices(assets: string[]) {
   return { source: "coingecko", items };
 }
 
-function getNewsFallback(assets: string[]) {
-  const keywords = assets.map((a) => a.toLowerCase());
+/* -------------------- News / Meme / AI (Fallback for now) -------------------- */
+
+function getNewsFallback(mode: "personalized" | "general", assets: string[]) {
   const all = [
     { id: "n1", title: "Bitcoin volatility rises ahead of macro events" },
     { id: "n2", title: "Ethereum L2 activity continues to grow" },
     { id: "n3", title: "Solana ecosystem sees new memecoin wave" },
     { id: "n4", title: "Crypto market mixed as traders wait for catalysts" },
+    { id: "n5", title: "Institutional interest in crypto ETFs remains strong" },
+    { id: "n6", title: "Altcoins react to new liquidity conditions" },
   ];
 
-  // simple filter by asset keywords if possible
+  if (mode === "general" || assets.length === 0) {
+    // general feed
+    return { source: "fallback", mode, items: all.slice(0, 4) };
+  }
+
+  // personalized: filter by asset keywords if possible
+  const keywords = assets.map((a) => a.toLowerCase());
   const filtered = all.filter((x) => keywords.some((k) => x.title.toLowerCase().includes(k)));
-  return { source: "fallback", items: filtered.length ? filtered : all };
+
+  return { source: "fallback", mode, items: (filtered.length ? filtered : all).slice(0, 4) };
 }
 
-function getMemeFallback() {
-  const memes = [
+function getMemeFallback(mode: "personalized" | "general", investorType: string) {
+  const general = [
     { id: "m1", title: "HODL mode activated", url: "" },
     { id: "m2", title: "Bought the top again", url: "" },
-    { id: "m3", title: "Day trader life", url: "" },
+    { id: "m3", title: "Crypto is calm... until it isn’t", url: "" },
   ];
-  return memes[Math.floor(Math.random() * memes.length)];
+
+  const dayTrader = [
+    { id: "m4", title: "Day trader life: candles everywhere", url: "" },
+    { id: "m5", title: "1-minute chart decisions 😅", url: "" },
+  ];
+
+  const nft = [
+    { id: "m6", title: "NFT collector: screenshotting vibes", url: "" },
+    { id: "m7", title: "Floor price watching 24/7", url: "" },
+  ];
+
+  // personalized: pick pool based on investorType
+  let pool = general;
+  if (mode === "personalized") {
+    if (investorType === "Day Trader") pool = [...dayTrader, ...general];
+    if (investorType === "NFT Collector") pool = [...nft, ...general];
+    if (investorType === "HODLer") pool = general;
+  }
+
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function getAiFallback(prefs: { investorType: string; assets: string[] }) {
-  const assetText = prefs.assets.length ? prefs.assets.join(", ") : "top coins";
+function getAiFallback(mode: "personalized" | "general", prefs: { investorType: string; assets: string[] }) {
+  const assetText = prefs.assets.length ? prefs.assets.join(", ") : "top crypto assets";
+
+  if (mode === "general") {
+    return {
+      source: "fallback",
+      mode,
+      text:
+        "Daily insight: Manage risk, avoid overtrading, and focus on a consistent strategy rather than short-term noise.",
+    };
+  }
+
   return {
     source: "fallback",
-    text: `Daily insight for a ${prefs.investorType} interested in ${assetText}: Stay disciplined with risk management and avoid overreacting to short-term noise.`,
+    mode,
+    text: `Daily insight for a ${prefs.investorType} interested in ${assetText}: Define your rules (entries/exits), size positions conservatively, and stick to your plan during volatility.`,
   };
 }
 
-function dateKey(d = new Date()) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
+/* -------------------- Route -------------------- */
 
 router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
   const prefs = await Preferences.findOne({ userId: req.userId }).lean();
@@ -80,34 +135,37 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
     return res.status(409).json({ message: "NO_PREFERENCES" });
   }
 
-  const contentTypes = prefs.contentTypes as unknown;
-  const assets = Array.isArray(prefs.assets) ? prefs.assets : [];
+  const userContentTypes = normalizeContentTypes(prefs.contentTypes as unknown);
+  const userAssets = normalizeAssets(prefs.assets as unknown);
+
   const investorType = typeof prefs.investorType === "string" ? prefs.investorType : "HODLer";
 
-  // Build sections based on user preferences (keys)
-  const includeNews = hasContent(contentTypes, "news");
-  const includePrices = hasContent(contentTypes, "prices");
-  const includeAi = hasContent(contentTypes, "ai");
-  const includeMeme = hasContent(contentTypes, "meme");
+  // "Preference affects content" (not whether section exists)
+  const prefers = (key: ContentKey) => userContentTypes.includes(key);
 
-  // fetch only what user asked for
-  const [pricesResult] = await Promise.allSettled([
-    includePrices ? getCoinGeckoPrices(assets) : Promise.resolve(null),
-  ]);
+  const newsMode: "personalized" | "general" = prefers("news") ? "personalized" : "general";
+  const pricesAssets = prefers("prices") && userAssets.length > 0 ? userAssets : [...DEFAULT_ASSETS];
+  const aiMode: "personalized" | "general" = prefers("ai") ? "personalized" : "general";
+  const memeMode: "personalized" | "general" = prefers("meme") ? "personalized" : "general";
 
+  // Prices (real API) — but keep dashboard alive even if CoinGecko fails
+  const pricesResult = await Promise.allSettled([getCoinGeckoPrices(pricesAssets)]);
   const prices =
-    pricesResult.status === "fulfilled" ? pricesResult.value : { source: "fallback", items: [] };
+    pricesResult[0].status === "fulfilled"
+      ? pricesResult[0].value
+      : { source: "fallback", items: [] as { id: string; usd: number | null; change24h: number | null }[] };
 
-  const news = includeNews ? getNewsFallback(assets) : null;
-  const meme = includeMeme ? getMemeFallback() : null;
-  const aiInsight = includeAi ? getAiFallback({ investorType, assets }) : null;
+  // Always 4 sections
+  const news = getNewsFallback(newsMode, userAssets);
+  const aiInsight = getAiFallback(aiMode, { investorType, assets: userAssets });
+  const meme = getMemeFallback(memeMode, investorType);
 
   res.json({
     dateKey: dateKey(),
     preferences: {
-      assets,
+      assets: userAssets,
       investorType,
-      contentTypes: Array.isArray(contentTypes) ? contentTypes : [],
+      contentTypes: userContentTypes,
     },
     sections: {
       news,

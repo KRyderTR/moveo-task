@@ -5,7 +5,11 @@ import { saveMyPreferences } from "../api/preferences";
 
 const ASSETS = ["bitcoin", "ethereum", "solana", "dogecoin"] as const;
 
-const INVESTOR_TYPES: InvestorType[] = ["HODLer", "Day Trader", "NFT Collector"];
+const INVESTOR_TYPES: InvestorType[] = [
+  "HODLer",
+  "Day Trader",
+  "NFT Collector",
+];
 
 const CONTENT: { key: ContentKey; label: string }[] = [
   { key: "news", label: "Market News" },
@@ -23,25 +27,29 @@ export default function Onboarding() {
 
   const [assets, setAssets] = useState<string[]>(["bitcoin", "ethereum"]);
   const [investorType, setInvestorType] = useState<InvestorType>("HODLer");
-  const [contentTypes, setContentTypes] = useState<ContentKey[]>(["news", "prices", "ai", "meme"]);
+  const [contentTypes, setContentTypes] = useState<ContentKey[]>([
+    "news",
+    "prices",
+    "ai",
+    "meme",
+  ]);
   const [err, setErr] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   async function onSave() {
     setErr("");
 
-    if (assets.length === 0) {
-      setErr("Please choose at least 1 asset");
-      return;
-    }
-    if (contentTypes.length === 0) {
-      setErr("Please choose at least 1 content type");
-      return;
-    }
+    const finalAssets = assets;
+    const finalContentTypes = contentTypes;
 
     try {
       setSaving(true);
-      await saveMyPreferences({ assets, investorType, contentTypes });
+      await saveMyPreferences({
+        assets: finalAssets,
+        investorType,
+        contentTypes: finalContentTypes,
+      });
+
       nav("/dashboard");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to save preferences";
@@ -54,10 +62,14 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen p-6 max-w-2xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold">Onboarding</h1>
-      <p className="opacity-70">Answer a few quick questions so we can personalize your dashboard.</p>
+      <p className="opacity-70">
+        Answer a few quick questions so we can personalize your dashboard.
+      </p>
 
       <div className="bg-white rounded-2xl shadow p-5 space-y-3">
-        <div className="font-semibold">What crypto assets are you interested in?</div>
+        <div className="font-semibold">
+          What crypto assets are you interested in?
+        </div>
         <div className="flex flex-wrap gap-2">
           {ASSETS.map((a) => (
             <button
@@ -90,10 +102,15 @@ export default function Onboarding() {
       </div>
 
       <div className="bg-white rounded-2xl shadow p-5 space-y-3">
-        <div className="font-semibold">What kind of content would you like to see?</div>
+        <div className="font-semibold">
+          What kind of content would you like to see?
+        </div>
         <div className="grid sm:grid-cols-2 gap-2">
           {CONTENT.map((c) => (
-            <label key={c.key} className="flex items-center gap-2 border rounded-xl p-3">
+            <label
+              key={c.key}
+              className="flex items-center gap-2 border rounded-xl p-3"
+            >
               <input
                 type="checkbox"
                 checked={contentTypes.includes(c.key)}
