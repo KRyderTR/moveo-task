@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 import { Preferences } from "../models/Preferences";
 import { getNews } from "../services/news";
+import { getAiInsight } from "../services/ai";
 
 const router = Router();
 
@@ -138,8 +139,12 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
   // News (CryptoPanic) — always return something, with fallback inside service
   const news = await getNews({ mode: newsMode, assets: userAssets });
 
-  // AI/Meme (still fallback for now)
-  const aiInsight = getAiFallback(aiMode, { investorType, assets: userAssets });
+  // AI/Meme
+  const aiInsight = await getAiInsight({
+    mode: aiMode,
+    investorType,
+    assets: userAssets,
+  });
   const meme = getMemeFallback(memeMode, investorType);
 
   res.json({
