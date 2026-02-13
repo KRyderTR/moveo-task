@@ -6,7 +6,12 @@ export type DashboardResponse = {
     news: { source: string; mode: "personalized" | "general"; items: { id: string; title: string }[] };
     prices: { source: string; items: { id: string; usd: number | null; change24h: number | null }[] };
     aiInsight: { source: string; mode: "personalized" | "general"; text: string };
-    meme: { id: string; title: string; url: string };
+    meme: {
+      source: string;
+      mode: "personalized" | "general";
+      item: { id: string; title: string; url: string };
+    };
+
   };
 };
 

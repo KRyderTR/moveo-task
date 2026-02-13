@@ -3,6 +3,8 @@ import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 import { Preferences } from "../models/Preferences";
 import { getNews } from "../services/news";
 import { getAiInsight } from "../services/ai";
+import { getMeme } from "../services/meme";
+
 
 const router = Router();
 
@@ -62,33 +64,6 @@ async function getCoinGeckoPrices(assets: string[]) {
 
 /* -------------------- Meme / AI (Fallback for now) -------------------- */
 
-function getMemeFallback(mode: "personalized" | "general", investorType: string) {
-  const general = [
-    { id: "m1", title: "HODL mode activated", url: "" },
-    { id: "m2", title: "Bought the top again", url: "" },
-    { id: "m3", title: "Crypto is calm... until it isn’t", url: "" },
-  ];
-
-  const dayTrader = [
-    { id: "m4", title: "Day trader life: candles everywhere", url: "" },
-    { id: "m5", title: "1-minute chart decisions 😅", url: "" },
-  ];
-
-  const nft = [
-    { id: "m6", title: "NFT collector: screenshotting vibes", url: "" },
-    { id: "m7", title: "Floor price watching 24/7", url: "" },
-  ];
-
-  let pool = general;
-  if (mode === "personalized") {
-    if (investorType === "Day Trader") pool = [...dayTrader, ...general];
-    if (investorType === "NFT Collector") pool = [...nft, ...general];
-    if (investorType === "HODLer") pool = general;
-  }
-
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
 function getAiFallback(mode: "personalized" | "general", prefs: { investorType: string; assets: string[] }) {
   const assetText = prefs.assets.length ? prefs.assets.join(", ") : "top crypto assets";
 
@@ -145,7 +120,8 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
     investorType,
     assets: userAssets,
   });
-  const meme = getMemeFallback(memeMode, investorType);
+
+  const meme = await getMeme({ mode: memeMode, investorType });
 
   res.json({
     dateKey: dateKey(),

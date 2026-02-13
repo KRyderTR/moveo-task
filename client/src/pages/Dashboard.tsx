@@ -78,10 +78,15 @@ export default function Dashboard() {
         {/* Meme - always */}
         <div className="bg-white rounded-2xl shadow p-5 space-y-2">
           <div className="font-semibold">Fun Crypto Meme</div>
-          <div className="text-sm opacity-70">{sections.meme.title}</div>
-          {sections.meme.url ? (
+          <div className="text-sm opacity-70">
+            source: {sections.meme.source} • mode: {sections.meme.mode}
+          </div>
+
+          <div className="text-sm opacity-70">{sections.meme.item.title}</div>
+
+          {sections.meme.item.url ? (
             <img
-              src={sections.meme.url}
+              src={sections.meme.item.url}
               className="rounded-xl max-h-72 object-contain"
             />
           ) : (
