@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 import { Preferences } from "../models/Preferences";
+import { getNews } from "../services/news";
 
 const router = Router();
 
@@ -41,7 +42,10 @@ async function getCoinGeckoPrices(assets: string[]) {
   const json: unknown = await res.json();
 
   if (!json || typeof json !== "object") {
-    return { source: "coingecko", items: [] as { id: string; usd: number | null; change24h: number | null }[] };
+    return {
+      source: "coingecko",
+      items: [] as { id: string; usd: number | null; change24h: number | null }[],
+    };
   }
 
   const obj = json as Record<string, { usd?: number; usd_24h_change?: number }>;
@@ -55,29 +59,7 @@ async function getCoinGeckoPrices(assets: string[]) {
   return { source: "coingecko", items };
 }
 
-/* -------------------- News / Meme / AI (Fallback for now) -------------------- */
-
-function getNewsFallback(mode: "personalized" | "general", assets: string[]) {
-  const all = [
-    { id: "n1", title: "Bitcoin volatility rises ahead of macro events" },
-    { id: "n2", title: "Ethereum L2 activity continues to grow" },
-    { id: "n3", title: "Solana ecosystem sees new memecoin wave" },
-    { id: "n4", title: "Crypto market mixed as traders wait for catalysts" },
-    { id: "n5", title: "Institutional interest in crypto ETFs remains strong" },
-    { id: "n6", title: "Altcoins react to new liquidity conditions" },
-  ];
-
-  if (mode === "general" || assets.length === 0) {
-    // general feed
-    return { source: "fallback", mode, items: all.slice(0, 4) };
-  }
-
-  // personalized: filter by asset keywords if possible
-  const keywords = assets.map((a) => a.toLowerCase());
-  const filtered = all.filter((x) => keywords.some((k) => x.title.toLowerCase().includes(k)));
-
-  return { source: "fallback", mode, items: (filtered.length ? filtered : all).slice(0, 4) };
-}
+/* -------------------- Meme / AI (Fallback for now) -------------------- */
 
 function getMemeFallback(mode: "personalized" | "general", investorType: string) {
   const general = [
@@ -96,7 +78,6 @@ function getMemeFallback(mode: "personalized" | "general", investorType: string)
     { id: "m7", title: "Floor price watching 24/7", url: "" },
   ];
 
-  // personalized: pick pool based on investorType
   let pool = general;
   if (mode === "personalized") {
     if (investorType === "Day Trader") pool = [...dayTrader, ...general];
@@ -140,7 +121,6 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
 
   const investorType = typeof prefs.investorType === "string" ? prefs.investorType : "HODLer";
 
-  // "Preference affects content" (not whether section exists)
   const prefers = (key: ContentKey) => userContentTypes.includes(key);
 
   const newsMode: "personalized" | "general" = prefers("news") ? "personalized" : "general";
@@ -148,15 +128,17 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
   const aiMode: "personalized" | "general" = prefers("ai") ? "personalized" : "general";
   const memeMode: "personalized" | "general" = prefers("meme") ? "personalized" : "general";
 
-  // Prices (real API) — but keep dashboard alive even if CoinGecko fails
+  // Prices (real API) — keep dashboard alive even if CoinGecko fails
   const pricesResult = await Promise.allSettled([getCoinGeckoPrices(pricesAssets)]);
   const prices =
     pricesResult[0].status === "fulfilled"
       ? pricesResult[0].value
       : { source: "fallback", items: [] as { id: string; usd: number | null; change24h: number | null }[] };
 
-  // Always 4 sections
-  const news = getNewsFallback(newsMode, userAssets);
+  // News (CryptoPanic) — always return something, with fallback inside service
+  const news = await getNews({ mode: newsMode, assets: userAssets });
+
+  // AI/Meme (still fallback for now)
   const aiInsight = getAiFallback(aiMode, { investorType, assets: userAssets });
   const meme = getMemeFallback(memeMode, investorType);
 
