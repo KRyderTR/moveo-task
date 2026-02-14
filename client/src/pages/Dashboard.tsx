@@ -97,7 +97,7 @@ export default function Dashboard() {
     votedMemeId && votedMemeId === currentMemeId ? memeVote?.vote : undefined;
 
   return (
-    <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4">
+    <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4 bg-gray-50">
       <DashboardHeader
         dateKey={data.dateKey}
         name={meUser.name}
@@ -113,7 +113,7 @@ export default function Dashboard() {
           </div>
 
           <div className="text-sm opacity-70">
-            source: {sections.news.source} • mode: {sections.news.mode}
+            source: {sections.news.source}
           </div>
 
           <ul className="list-disc pl-5">
@@ -137,15 +137,35 @@ export default function Dashboard() {
           </div>
 
           <ul className="space-y-1">
-            {sections.prices.items.slice(0, 8).map((c) => (
-              <li key={c.id} className="flex justify-between">
-                <span>{c.id}</span>
-                <span>
-                  {c.usd === null ? "-" : `$${c.usd}`}
-                  {c.change24h === null ? "" : ` (${c.change24h.toFixed(2)}%)`}
-                </span>
-              </li>
-            ))}
+            {sections.prices.items.slice(0, 8).map((c) => {
+              const change = c.change24h;
+
+              const changeColor =
+                change == null
+                  ? ""
+                  : change > 0
+                    ? "text-green-600"
+                    : change < 0
+                      ? "text-red-600"
+                      : "text-gray-500";
+
+              return (
+                <li key={c.id} className="flex justify-between">
+                  <span className="capitalize">{c.id}</span>
+
+                  <span>
+                    {c.usd === null ? "-" : `$${c.usd}`}
+
+                    {change != null && (
+                      <span className={`ml-2 ${changeColor}`}>
+                        {change > 0 ? "▲" : change < 0 ? "▼" : ""}
+                        {change.toFixed(2)}%
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -157,8 +177,7 @@ export default function Dashboard() {
           </div>
 
           <div className="text-sm opacity-70">
-            source: {sections.aiInsight.source} • mode:{" "}
-            {sections.aiInsight.mode}
+            source: {sections.aiInsight.source}
           </div>
 
           <p className="whitespace-pre-wrap">{sections.aiInsight.text}</p>
@@ -172,7 +191,7 @@ export default function Dashboard() {
           </div>
 
           <div className="text-sm opacity-70">
-            source: {sections.meme.source} • mode: {sections.meme.mode}
+            source: {sections.meme.source}
           </div>
 
           <div className="text-sm opacity-70">{sections.meme.item.title}</div>
