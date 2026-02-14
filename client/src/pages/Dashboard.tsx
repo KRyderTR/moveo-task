@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getDailyDashboard } from "../api/dashboard";
 import { getDailyVotes, voteSection } from "../api/votes";
 import type { SectionKey, VoteValue, DailyVotes } from "../api/votes";
+import { BiLike, BiDislike, BiSolidLike, BiSolidDislike } from "react-icons/bi";
 
 function VoteBar({
   section,
@@ -13,24 +14,29 @@ function VoteBar({
   onVote: (section: SectionKey, value: VoteValue) => void;
 }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-3">
       <button
         type="button"
         onClick={() => onVote(section, 1)}
-        className={`px-3 py-1 rounded-xl border ${
-          current === 1 ? "bg-black text-white" : "bg-white"
-        }`}
+        className="text-2xl transition hover:scale-110 cursor-pointer"
       >
-        👍
+        {current === 1 ? (
+          <BiSolidLike className="text-green-600" />
+        ) : (
+          <BiLike className="text-gray-600 hover:text-green-600" />
+        )}
       </button>
+
       <button
         type="button"
         onClick={() => onVote(section, -1)}
-        className={`px-3 py-1 rounded-xl border ${
-          current === -1 ? "bg-black text-white" : "bg-white"
-        }`}
+        className="text-2xl transition hover:scale-110 cursor-pointer"
       >
-        👎
+        {current === -1 ? (
+          <BiSolidDislike className="text-red-600" />
+        ) : (
+          <BiDislike className="text-gray-600 hover:text-red-600" />
+        )}
       </button>
     </div>
   );
@@ -43,7 +49,9 @@ function getMemeIdFromContext(context: unknown): string | null {
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState<Awaited<ReturnType<typeof getDailyDashboard>> | null>(null);
+  const [data, setData] = useState<Awaited<
+    ReturnType<typeof getDailyDashboard>
+  > | null>(null);
   const [votes, setVotes] = useState<DailyVotes>({});
   const [err, setErr] = useState<string>("");
 
@@ -51,7 +59,10 @@ export default function Dashboard() {
     (async () => {
       setErr("");
       try {
-        const [d, v] = await Promise.all([getDailyDashboard(), getDailyVotes()]);
+        const [d, v] = await Promise.all([
+          getDailyDashboard(),
+          getDailyVotes(),
+        ]);
         setData(d);
         setVotes(v.votes ?? {});
       } catch (e) {
@@ -68,10 +79,13 @@ export default function Dashboard() {
       section === "news"
         ? { itemIds: data.sections.news.items.map((x) => x.id) }
         : section === "prices"
-        ? { coinIds: data.sections.prices.items.map((x) => x.id) }
-        : section === "ai"
-        ? { snippet: data.sections.aiInsight.text.slice(0, 120) }
-        : { memeId: data.sections.meme.item.id, memeUrl: data.sections.meme.item.url };
+          ? { coinIds: data.sections.prices.items.map((x) => x.id) }
+          : section === "ai"
+            ? { snippet: data.sections.aiInsight.text.slice(0, 120) }
+            : {
+                memeId: data.sections.meme.item.id,
+                memeUrl: data.sections.meme.item.url,
+              };
 
     // optimistic update (keep context!)
     setVotes((prev) => ({ ...prev, [section]: { vote: value, context } }));
@@ -96,16 +110,17 @@ export default function Dashboard() {
 
   const { sections } = data;
 
-  // ✅ Votes for each section
+  // Votes for each section
   const newsCurrent = votes.news?.vote;
   const pricesCurrent = votes.prices?.vote;
   const aiCurrent = votes.ai?.vote;
 
-  // ✅ Meme vote is only "active" if it was for the currently displayed meme
+  // Meme vote is only "active" if it was for the currently displayed meme
   const memeVote = votes.meme;
   const votedMemeId = getMemeIdFromContext(memeVote?.context);
   const currentMemeId = sections.meme.item.id;
-  const memeCurrent = votedMemeId && votedMemeId === currentMemeId ? memeVote?.vote : undefined;
+  const memeCurrent =
+    votedMemeId && votedMemeId === currentMemeId ? memeVote?.vote : undefined;
 
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4">
@@ -116,7 +131,7 @@ export default function Dashboard() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* News */}
-        <div className="bg-white rounded-2xl shadow p-5 space-y-2">
+        <div className="bg-white rounded-2xl shadow shadow-gray-300 p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">Market News</div>
             <VoteBar section="news" current={newsCurrent} onVote={onVote} />
@@ -134,13 +149,15 @@ export default function Dashboard() {
         </div>
 
         {/* Prices */}
-        <div className="bg-white rounded-2xl shadow p-5 space-y-2">
+        <div className="bg-white rounded-2xl shadow shadow-gray-300 p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">Coin Prices</div>
             <VoteBar section="prices" current={pricesCurrent} onVote={onVote} />
           </div>
 
-          <div className="text-sm opacity-70">source: {sections.prices.source}</div>
+          <div className="text-sm opacity-70">
+            source: {sections.prices.source}
+          </div>
 
           <ul className="space-y-1">
             {sections.prices.items.slice(0, 8).map((c) => (
@@ -156,21 +173,22 @@ export default function Dashboard() {
         </div>
 
         {/* AI */}
-        <div className="bg-white rounded-2xl shadow p-5 space-y-2">
+        <div className="bg-white rounded-2xl shadow shadow-gray-300 p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">AI Insight of the Day</div>
             <VoteBar section="ai" current={aiCurrent} onVote={onVote} />
           </div>
 
           <div className="text-sm opacity-70">
-            source: {sections.aiInsight.source} • mode: {sections.aiInsight.mode}
+            source: {sections.aiInsight.source} • mode:{" "}
+            {sections.aiInsight.mode}
           </div>
 
           <p className="whitespace-pre-wrap">{sections.aiInsight.text}</p>
         </div>
 
         {/* Meme */}
-        <div className="bg-white rounded-2xl shadow p-5 space-y-2">
+        <div className="bg-white rounded-2xl shadow shadow-gray-300 p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">Fun Crypto Meme</div>
             <VoteBar section="meme" current={memeCurrent} onVote={onVote} />
@@ -182,21 +200,19 @@ export default function Dashboard() {
 
           <div className="text-sm opacity-70">{sections.meme.item.title}</div>
 
-          {sections.meme.item.url ? (
-            <img
-              src={sections.meme.item.url}
-              className="rounded-xl max-h-72 object-contain"
-              alt={sections.meme.item.title}
-            />
-          ) : (
-            <div className="border rounded-xl p-6 opacity-70">Meme placeholder</div>
-          )}
-
-          {votes.meme?.vote && memeCurrent === undefined && (
-            <div className="text-xs opacity-60">
-              You voted on a different meme earlier today.
-            </div>
-          )}
+          <div className="flex items-center justify-center pt-2">
+            {sections.meme.item.url ? (
+              <img
+                src={sections.meme.item.url}
+                className="rounded-xl max-h-72 object-contain"
+                alt={sections.meme.item.title}
+              />
+            ) : (
+              <div className="border rounded-xl p-6 opacity-70">
+                Meme placeholder
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

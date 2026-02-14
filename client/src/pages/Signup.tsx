@@ -41,7 +41,7 @@ export default function Signup() {
     try {
       const { token } = await signup({ name, email, password });
       setToken(token);
-      nav("/onboarding");
+      nav("/onboarding", { replace: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Signup failed";
       setErr(msg);

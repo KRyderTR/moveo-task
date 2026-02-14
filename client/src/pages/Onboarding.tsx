@@ -50,7 +50,7 @@ export default function Onboarding() {
         contentTypes: finalContentTypes,
       });
 
-      nav("/dashboard");
+      nav("/dashboard", { replace: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to save preferences";
       setErr(msg);
