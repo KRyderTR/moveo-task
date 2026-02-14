@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
+// import { useNavigate } from "react-router-dom";
+
 import { getDailyDashboard } from "../api/dashboard";
 import { getDailyVotes, voteSection } from "../api/votes";
 import type { SectionKey, VoteValue, DailyVotes } from "../api/votes";
-import { BiLike, BiDislike, BiSolidLike, BiSolidDislike } from "react-icons/bi";
+
+import { me } from "../api/auth";
+import type { AuthUser } from "../api/auth";
+
+import DashboardHeader from "../components/DashboardHeader";
+
+import {
+  BiLike,
+  BiDislike,
+  BiSolidLike,
+  BiSolidDislike,
+} from "react-icons/bi";
 
 function VoteBar({
   section,
@@ -49,24 +62,32 @@ function getMemeIdFromContext(context: unknown): string | null {
 }
 
 export default function Dashboard() {
+  // const nav = useNavigate();
+
   const [data, setData] = useState<Awaited<
     ReturnType<typeof getDailyDashboard>
   > | null>(null);
+
   const [votes, setVotes] = useState<DailyVotes>({});
+  const [meUser, setMeUser] = useState<AuthUser | null>(null);
   const [err, setErr] = useState<string>("");
 
   useEffect(() => {
     (async () => {
       setErr("");
       try {
-        const [d, v] = await Promise.all([
+        const [d, v, m] = await Promise.all([
           getDailyDashboard(),
           getDailyVotes(),
+          me(),
         ]);
+
         setData(d);
         setVotes(v.votes ?? {});
+        setMeUser(m.user);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Failed to load dashboard";
+        const msg =
+          e instanceof Error ? e.message : "Failed to load dashboard";
         setErr(msg);
       }
     })();
@@ -79,55 +100,61 @@ export default function Dashboard() {
       section === "news"
         ? { itemIds: data.sections.news.items.map((x) => x.id) }
         : section === "prices"
-          ? { coinIds: data.sections.prices.items.map((x) => x.id) }
-          : section === "ai"
-            ? { snippet: data.sections.aiInsight.text.slice(0, 120) }
-            : {
-                memeId: data.sections.meme.item.id,
-                memeUrl: data.sections.meme.item.url,
-              };
+        ? { coinIds: data.sections.prices.items.map((x) => x.id) }
+        : section === "ai"
+        ? { snippet: data.sections.aiInsight.text.slice(0, 120) }
+        : {
+            memeId: data.sections.meme.item.id,
+            memeUrl: data.sections.meme.item.url,
+          };
 
-    // optimistic update (keep context!)
-    setVotes((prev) => ({ ...prev, [section]: { vote: value, context } }));
+    // optimistic update
+    setVotes((prev) => ({
+      ...prev,
+      [section]: { vote: value, context },
+    }));
 
     try {
       await voteSection({ section, vote: value, context });
     } catch (e) {
-      // revert on error
       setVotes((prev) => {
         const copy = { ...prev };
         delete copy[section];
         return copy;
       });
 
-      const msg = e instanceof Error ? e.message : "Failed to vote";
+      const msg =
+        e instanceof Error ? e.message : "Failed to vote";
       setErr(msg);
     }
   }
 
   if (err) return <div className="p-6 text-red-600">{err}</div>;
-  if (!data) return <div className="p-6">Loading dashboard...</div>;
+  if (!data || !meUser)
+    return <div className="p-6">Loading dashboard...</div>;
 
   const { sections } = data;
 
-  // Votes for each section
   const newsCurrent = votes.news?.vote;
   const pricesCurrent = votes.prices?.vote;
   const aiCurrent = votes.ai?.vote;
 
-  // Meme vote is only "active" if it was for the currently displayed meme
   const memeVote = votes.meme;
   const votedMemeId = getMemeIdFromContext(memeVote?.context);
   const currentMemeId = sections.meme.item.id;
   const memeCurrent =
-    votedMemeId && votedMemeId === currentMemeId ? memeVote?.vote : undefined;
+    votedMemeId && votedMemeId === currentMemeId
+      ? memeVote?.vote
+      : undefined;
 
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4">
-      <div className="flex items-end justify-between">
-        <h1 className="text-3xl font-bold">Daily Dashboard</h1>
-        <div className="text-sm opacity-70">{data.dateKey}</div>
-      </div>
+      {/* Header Component */}
+      <DashboardHeader
+        dateKey={data.dateKey}
+        name={meUser.name}
+        email={meUser.email}
+      />
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* News */}
@@ -152,7 +179,11 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow shadow-gray-300 p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">Coin Prices</div>
-            <VoteBar section="prices" current={pricesCurrent} onVote={onVote} />
+            <VoteBar
+              section="prices"
+              current={pricesCurrent}
+              onVote={onVote}
+            />
           </div>
 
           <div className="text-sm opacity-70">
@@ -165,7 +196,9 @@ export default function Dashboard() {
                 <span>{c.id}</span>
                 <span>
                   {c.usd === null ? "-" : `$${c.usd}`}
-                  {c.change24h === null ? "" : ` (${c.change24h.toFixed(2)}%)`}
+                  {c.change24h === null
+                    ? ""
+                    : ` (${c.change24h.toFixed(2)}%)`}
                 </span>
               </li>
             ))}
@@ -184,7 +217,9 @@ export default function Dashboard() {
             {sections.aiInsight.mode}
           </div>
 
-          <p className="whitespace-pre-wrap">{sections.aiInsight.text}</p>
+          <p className="whitespace-pre-wrap">
+            {sections.aiInsight.text}
+          </p>
         </div>
 
         {/* Meme */}
@@ -198,7 +233,9 @@ export default function Dashboard() {
             source: {sections.meme.source} • mode: {sections.meme.mode}
           </div>
 
-          <div className="text-sm opacity-70">{sections.meme.item.title}</div>
+          <div className="text-sm opacity-70">
+            {sections.meme.item.title}
+          </div>
 
           <div className="flex items-center justify-center pt-2">
             {sections.meme.item.url ? (
