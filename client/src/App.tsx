@@ -12,14 +12,14 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ברירת מחדל */}
+        {/* default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-        {/* ציבורי */}
+        {/* public */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* חייב להיות מחובר */}
+        {/* user must be loged in */}
         <Route
           path="/onboarding"
           element={
@@ -29,7 +29,7 @@ export default function App() {
           }
         />
 
-        {/* חייב להיות מחובר + חייב להיות אחרי onboarding */}
+        {/* User must be loged in and after onboarding */}
         <Route
           path="/dashboard"
           element={
