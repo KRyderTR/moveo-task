@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-// import { useNavigate } from "react-router-dom";
 
 import { getDailyDashboard } from "../api/dashboard";
 import { getDailyVotes, voteSection } from "../api/votes";
@@ -9,46 +8,8 @@ import { me } from "../api/auth";
 import type { AuthUser } from "../api/auth";
 
 import DashboardHeader from "../components/DashboardHeader";
-
-import { BiLike, BiDislike, BiSolidLike, BiSolidDislike } from "react-icons/bi";
-
-function VoteBar({
-  section,
-  current,
-  onVote,
-}: {
-  section: SectionKey;
-  current?: VoteValue;
-  onVote: (section: SectionKey, value: VoteValue) => void;
-}) {
-  return (
-    <div className="flex gap-3">
-      <button
-        type="button"
-        onClick={() => onVote(section, 1)}
-        className="text-2xl transition hover:scale-110 cursor-pointer"
-      >
-        {current === 1 ? (
-          <BiSolidLike className="text-green-600" />
-        ) : (
-          <BiLike className="text-gray-600 hover:text-green-600" />
-        )}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onVote(section, -1)}
-        className="text-2xl transition hover:scale-110 cursor-pointer"
-      >
-        {current === -1 ? (
-          <BiSolidDislike className="text-red-600" />
-        ) : (
-          <BiDislike className="text-gray-600 hover:text-red-600" />
-        )}
-      </button>
-    </div>
-  );
-}
+import VoteBar from "../components/VoteBar";
+import DashboardSkeleton from "../components/DashboardSkeleton";
 
 function getMemeIdFromContext(context: unknown): string | null {
   if (!context || typeof context !== "object") return null;
@@ -57,8 +18,6 @@ function getMemeIdFromContext(context: unknown): string | null {
 }
 
 export default function Dashboard() {
-  // const nav = useNavigate();
-
   const [data, setData] = useState<Awaited<
     ReturnType<typeof getDailyDashboard>
   > | null>(null);
@@ -123,7 +82,7 @@ export default function Dashboard() {
   }
 
   if (err) return <div className="p-6 text-red-600">{err}</div>;
-  if (!data || !meUser) return <div className="p-6">Loading dashboard...</div>;
+  if (!data || !meUser) return <DashboardSkeleton />;
 
   const { sections } = data;
 
@@ -139,7 +98,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4">
-      {/* Header Component */}
       <DashboardHeader
         dateKey={data.dateKey}
         name={meUser.name}
@@ -160,7 +118,9 @@ export default function Dashboard() {
 
           <ul className="list-disc pl-5">
             {sections.news.items.slice(0, 6).map((n) => (
-              <li key={n.id} className="pt-1.5">{n.title}</li>
+              <li key={n.id} className="pt-1.5">
+                {n.title}
+              </li>
             ))}
           </ul>
         </div>
