@@ -7,55 +7,55 @@ const router = Router();
 type Section = "news" | "prices" | "ai" | "meme";
 
 function dateKey(d = new Date()) {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 // POST /votes
 router.post("/", requireAuth, async (req: AuthedRequest, res) => {
-    const { section, vote, context } = req.body as {
-        section?: Section;
-        vote?: number;
-        context?: unknown;
-    };
+  const { section, vote, context } = req.body as {
+    section?: Section;
+    vote?: number;
+    context?: unknown;
+  };
 
-    if (!section || !["news", "prices", "ai", "meme"].includes(section)) {
-        return res.status(400).json({ message: "INVALID_SECTION" });
-    }
+  if (!section || !["news", "prices", "ai", "meme"].includes(section)) {
+    return res.status(400).json({ message: "INVALID_SECTION" });
+  }
 
-    if (vote !== 1 && vote !== -1) {
-        return res.status(400).json({ message: "INVALID_VOTE" });
-    }
+  if (vote !== 1 && vote !== -1) {
+    return res.status(400).json({ message: "INVALID_VOTE" });
+  }
 
-    const today = dateKey();
+  const today = dateKey();
 
-    await Vote.findOneAndUpdate(
-        { userId: req.userId, dateKey: today, section },
-        { vote, context },
-        { upsert: true, new: true }
-    );
+  await Vote.findOneAndUpdate(
+    { userId: req.userId, dateKey: today, section },
+    { vote, context },
+    { upsert: true, returnDocument: "after" }
+  );
 
-    res.json({ ok: true });
+  res.json({ ok: true });
 });
 
 // GET /votes/daily
 router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
-    const today = dateKey();
+  const today = dateKey();
 
-    const votes = await Vote.find({
-        userId: req.userId,
-        dateKey: today,
-    }).lean();
+  const votes = await Vote.find({
+    userId: req.userId,
+    dateKey: today,
+  }).lean();
 
-    const result: Record<string, number> = {};
+  const result: Partial<Record<Section, { vote: 1 | -1; context?: unknown }>> = {};
 
-    for (const v of votes) {
-        result[v.section] = v.vote;
-    }
+  for (const v of votes) {
+    result[v.section as Section] = { vote: v.vote as 1 | -1, context: v.context };
+  }
 
-    res.json({ dateKey: today, votes: result });
+  res.json({ dateKey: today, votes: result });
 });
 
 export default router;

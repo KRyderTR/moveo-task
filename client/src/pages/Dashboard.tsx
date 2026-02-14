@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { getDailyDashboard } from "../api/dashboard";
 import { getDailyVotes, voteSection } from "../api/votes";
-import type { SectionKey, VoteValue } from "../api/votes";
-
-type DailyVotesState = Partial<Record<SectionKey, VoteValue>>;
+import type { SectionKey, VoteValue, DailyVotes } from "../api/votes";
 
 function VoteBar({
   section,
@@ -38,21 +36,22 @@ function VoteBar({
   );
 }
 
+function getMemeIdFromContext(context: unknown): string | null {
+  if (!context || typeof context !== "object") return null;
+  const anyCtx = context as Record<string, unknown>;
+  return typeof anyCtx.memeId === "string" ? anyCtx.memeId : null;
+}
+
 export default function Dashboard() {
-  const [data, setData] = useState<Awaited<
-    ReturnType<typeof getDailyDashboard>
-  > | null>(null);
-  const [votes, setVotes] = useState<DailyVotesState>({});
+  const [data, setData] = useState<Awaited<ReturnType<typeof getDailyDashboard>> | null>(null);
+  const [votes, setVotes] = useState<DailyVotes>({});
   const [err, setErr] = useState<string>("");
 
   useEffect(() => {
     (async () => {
       setErr("");
       try {
-        const [d, v] = await Promise.all([
-          getDailyDashboard(),
-          getDailyVotes(),
-        ]);
+        const [d, v] = await Promise.all([getDailyDashboard(), getDailyVotes()]);
         setData(d);
         setVotes(v.votes ?? {});
       } catch (e) {
@@ -69,16 +68,13 @@ export default function Dashboard() {
       section === "news"
         ? { itemIds: data.sections.news.items.map((x) => x.id) }
         : section === "prices"
-          ? { coinIds: data.sections.prices.items.map((x) => x.id) }
-          : section === "ai"
-            ? { snippet: data.sections.aiInsight.text.slice(0, 120) }
-            : {
-                memeId: data.sections.meme.item.id,
-                memeUrl: data.sections.meme.item.url,
-              };
+        ? { coinIds: data.sections.prices.items.map((x) => x.id) }
+        : section === "ai"
+        ? { snippet: data.sections.aiInsight.text.slice(0, 120) }
+        : { memeId: data.sections.meme.item.id, memeUrl: data.sections.meme.item.url };
 
-    // optimistic update
-    setVotes((prev) => ({ ...prev, [section]: value }));
+    // optimistic update (keep context!)
+    setVotes((prev) => ({ ...prev, [section]: { vote: value, context } }));
 
     try {
       await voteSection({ section, vote: value, context });
@@ -100,6 +96,17 @@ export default function Dashboard() {
 
   const { sections } = data;
 
+  // ✅ Votes for each section
+  const newsCurrent = votes.news?.vote;
+  const pricesCurrent = votes.prices?.vote;
+  const aiCurrent = votes.ai?.vote;
+
+  // ✅ Meme vote is only "active" if it was for the currently displayed meme
+  const memeVote = votes.meme;
+  const votedMemeId = getMemeIdFromContext(memeVote?.context);
+  const currentMemeId = sections.meme.item.id;
+  const memeCurrent = votedMemeId && votedMemeId === currentMemeId ? memeVote?.vote : undefined;
+
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-end justify-between">
@@ -112,7 +119,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">Market News</div>
-            <VoteBar section="news" current={votes.news} onVote={onVote} />
+            <VoteBar section="news" current={newsCurrent} onVote={onVote} />
           </div>
 
           <div className="text-sm opacity-70">
@@ -130,12 +137,10 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">Coin Prices</div>
-            <VoteBar section="prices" current={votes.prices} onVote={onVote} />
+            <VoteBar section="prices" current={pricesCurrent} onVote={onVote} />
           </div>
 
-          <div className="text-sm opacity-70">
-            source: {sections.prices.source}
-          </div>
+          <div className="text-sm opacity-70">source: {sections.prices.source}</div>
 
           <ul className="space-y-1">
             {sections.prices.items.slice(0, 8).map((c) => (
@@ -154,12 +159,11 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">AI Insight of the Day</div>
-            <VoteBar section="ai" current={votes.ai} onVote={onVote} />
+            <VoteBar section="ai" current={aiCurrent} onVote={onVote} />
           </div>
 
           <div className="text-sm opacity-70">
-            source: {sections.aiInsight.source} • mode:{" "}
-            {sections.aiInsight.mode}
+            source: {sections.aiInsight.source} • mode: {sections.aiInsight.mode}
           </div>
 
           <p className="whitespace-pre-wrap">{sections.aiInsight.text}</p>
@@ -169,7 +173,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl shadow p-5 space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold">Fun Crypto Meme</div>
-            <VoteBar section="meme" current={votes.meme} onVote={onVote} />
+            <VoteBar section="meme" current={memeCurrent} onVote={onVote} />
           </div>
 
           <div className="text-sm opacity-70">
@@ -185,8 +189,12 @@ export default function Dashboard() {
               alt={sections.meme.item.title}
             />
           ) : (
-            <div className="border rounded-xl p-6 opacity-70">
-              Meme placeholder
+            <div className="border rounded-xl p-6 opacity-70">Meme placeholder</div>
+          )}
+
+          {votes.meme?.vote && memeCurrent === undefined && (
+            <div className="text-xs opacity-60">
+              You voted on a different meme earlier today.
             </div>
           )}
         </div>
