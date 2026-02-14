@@ -76,7 +76,7 @@ export default function Onboarding() {
               key={a}
               type="button"
               onClick={() => setAssets((prev) => toggle(prev, a))}
-              className={`px-3 py-1 rounded-full border ${
+              className={`px-3 py-1 rounded-full border border-gray-300 cursor-pointer ${
                 assets.includes(a) ? "bg-black text-white" : "bg-white"
               }`}
             >
@@ -89,7 +89,7 @@ export default function Onboarding() {
       <div className="bg-white rounded-2xl shadow p-5 space-y-3">
         <div className="font-semibold">What type of investor are you?</div>
         <select
-          className="border rounded-xl p-2"
+          className="border border-gray-300 rounded-xl p-2 cursor-pointer"
           value={investorType}
           onChange={(e) => setInvestorType(e.target.value as InvestorType)}
         >
@@ -109,7 +109,7 @@ export default function Onboarding() {
           {CONTENT.map((c) => (
             <label
               key={c.key}
-              className="flex items-center gap-2 border rounded-xl p-3"
+              className="flex items-center gap-2 border border-gray-300 rounded-xl p-3 cursor-pointer"
             >
               <input
                 type="checkbox"
@@ -127,7 +127,7 @@ export default function Onboarding() {
       <button
         onClick={onSave}
         disabled={saving}
-        className="bg-black text-white rounded-xl px-4 py-2 disabled:opacity-60"
+        className="bg-black text-white rounded-xl px-4 py-2 disabled:opacity-60 cursor-pointer"
       >
         {saving ? "Saving..." : "Save & Continue"}
       </button>
