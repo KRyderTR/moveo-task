@@ -56,45 +56,56 @@ export default function Signup() {
       >
         <h1 className="text-2xl font-bold">Signup</h1>
 
-        <input
-          className="w-full border rounded-xl p-2"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <div>
+          <p className="pb-0.5">Name</p>
+          <input
+            className="w-full border border-gray-300 rounded-xl p-2"
+            placeholder="Enter your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
 
-        <input
-          className="w-full border rounded-xl p-2"
-          placeholder="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div>
+          <p className="pb-0.5">Email</p>
+          <input
+            className="w-full border border-gray-300 rounded-xl p-2"
+            placeholder="email@example.com"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
-        <input
-          className="w-full border rounded-xl p-2"
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <input
-          className="w-full border rounded-xl p-2"
-          placeholder="Confirm Password"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
+        <div>
+          <p className="pb-0.5">Password</p>
+          <input
+            className="w-full border border-gray-300 rounded-xl p-2"
+            placeholder="Enter your password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <div>
+          <p className="pb-0.5">Confirm Password</p>
+          <input
+            className="w-full border border-gray-300 rounded-xl p-2"
+            placeholder="Confirm Password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </div>
 
         {err && <div className="text-red-600 text-sm">{err}</div>}
 
-        <button className="w-full bg-black text-white rounded-xl p-2">
+        <button className="w-full bg-black text-white rounded-xl p-2 mt-2 cursor-pointer">
           Create account
         </button>
 
-        <div className="text-sm">
-          Have an account?{" "}
+        <div className="text-sm text-gray-800">
+          Already have an account?{" "}
           <Link className="underline" to="/login">
             Login
           </Link>
