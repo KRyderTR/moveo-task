@@ -4,7 +4,7 @@ import { Preferences } from "../models/Preferences";
 import { getNews } from "../services/news";
 import { getAiInsight } from "../services/ai";
 import { getMeme } from "../services/meme";
-
+import { DailyDashboardCache } from "../models/DailyDashboardCache";
 
 const router = Router();
 
@@ -62,27 +62,6 @@ async function getCoinGeckoPrices(assets: string[]) {
   return { source: "coingecko", items };
 }
 
-/* -------------------- Meme / AI (Fallback for now) -------------------- */
-
-function getAiFallback(mode: "personalized" | "general", prefs: { investorType: string; assets: string[] }) {
-  const assetText = prefs.assets.length ? prefs.assets.join(", ") : "top crypto assets";
-
-  if (mode === "general") {
-    return {
-      source: "fallback",
-      mode,
-      text:
-        "Daily insight: Manage risk, avoid overtrading, and focus on a consistent strategy rather than short-term noise.",
-    };
-  }
-
-  return {
-    source: "fallback",
-    mode,
-    text: `Daily insight for a ${prefs.investorType} interested in ${assetText}: Define your rules (entries/exits), size positions conservatively, and stick to your plan during volatility.`,
-  };
-}
-
 /* -------------------- Route -------------------- */
 
 router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
@@ -97,6 +76,7 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
 
   const investorType = typeof prefs.investorType === "string" ? prefs.investorType : "HODLer";
 
+  // "Preference affects content quality" (not whether section exists)
   const prefers = (key: ContentKey) => userContentTypes.includes(key);
 
   const newsMode: "personalized" | "general" = prefers("news") ? "personalized" : "general";
@@ -104,27 +84,52 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
   const aiMode: "personalized" | "general" = prefers("ai") ? "personalized" : "general";
   const memeMode: "personalized" | "general" = prefers("meme") ? "personalized" : "general";
 
-  // Prices (real API) — keep dashboard alive even if CoinGecko fails
-  const pricesResult = await Promise.allSettled([getCoinGeckoPrices(pricesAssets)]);
-  const prices =
-    pricesResult[0].status === "fulfilled"
-      ? pricesResult[0].value
-      : { source: "fallback", items: [] as { id: string; usd: number | null; change24h: number | null }[] };
+  const today = dateKey();
 
-  // News (CryptoPanic) — always return something, with fallback inside service
-  const news = await getNews({ mode: newsMode, assets: userAssets });
+  // ---- Daily cache for: News, Prices, AI ----
+  const cached = await DailyDashboardCache.findOne({ userId: req.userId, dateKey: today }).lean();
 
-  // AI/Meme
-  const aiInsight = await getAiInsight({
-    mode: aiMode,
-    investorType,
-    assets: userAssets,
-  });
+  let news: any;
+  let prices: any;
+  let aiInsight: any;
 
+  if (cached) {
+    news = cached.news;
+    prices = cached.prices;
+    aiInsight = cached.aiInsight;
+  } else {
+    // Prices (CoinGecko) - keep dashboard alive if fails
+    const pricesResult = await Promise.allSettled([getCoinGeckoPrices(pricesAssets)]);
+    prices =
+      pricesResult[0].status === "fulfilled"
+        ? pricesResult[0].value
+        : { source: "fallback", items: [] as { id: string; usd: number | null; change24h: number | null }[] };
+
+    // News (CryptoPanic with fallback inside service)
+    news = await getNews({ mode: newsMode, assets: userAssets });
+
+    // AI (OpenRouter with fallback inside service)
+    aiInsight = await getAiInsight({
+      mode: aiMode,
+      investorType,
+      assets: userAssets,
+    });
+
+    // Save cache
+    await DailyDashboardCache.create({
+      userId: req.userId,
+      dateKey: today,
+      news,
+      prices,
+      aiInsight,
+    });
+  }
+
+  // ---- Meme is always dynamic (not cached) ----
   const meme = await getMeme({ mode: memeMode, investorType });
 
   res.json({
-    dateKey: dateKey(),
+    dateKey: today,
     preferences: {
       assets: userAssets,
       investorType,
