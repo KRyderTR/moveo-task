@@ -97,7 +97,7 @@ export default function Dashboard() {
     votedMemeId && votedMemeId === currentMemeId ? memeVote?.vote : undefined;
 
   return (
-    <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4 bg-gray-50">
+    <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-4 bg-gray-50 pb-16">
       <DashboardHeader
         dateKey={data.dateKey}
         name={meUser.name}

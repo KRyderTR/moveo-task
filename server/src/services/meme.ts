@@ -11,7 +11,6 @@ function isImageUrl(url: string) {
 }
 
 async function getRedditMemes(): Promise<MemeItem[]> {
-  // אפשר לשחק עם subreddits
   const subreddits = ["cryptomemes", "CryptoCurrencyMemes", "BitcoinMemes"];
   const subreddit = pickRandom(subreddits);
 
@@ -19,7 +18,6 @@ async function getRedditMemes(): Promise<MemeItem[]> {
 
   const res = await fetch(url, {
     headers: {
-      // Reddit אוהב User-Agent
       "User-Agent": "moveo-task/1.0 (by u/anonymous)",
       "Accept": "application/json",
     },
@@ -32,10 +30,10 @@ async function getRedditMemes(): Promise<MemeItem[]> {
   // parse listing
   const children =
     json &&
-    typeof json === "object" &&
-    "data" in json &&
-    (json as any).data &&
-    Array.isArray((json as any).data.children)
+      typeof json === "object" &&
+      "data" in json &&
+      (json as any).data &&
+      Array.isArray((json as any).data.children)
       ? (json as any).data.children
       : [];
 
@@ -45,12 +43,10 @@ async function getRedditMemes(): Promise<MemeItem[]> {
     const d = c?.data;
     if (!d) continue;
 
-    // url_overridden_by_dest בדרך כלל יהיה הקישור לתמונה
     const directUrl = typeof d.url_overridden_by_dest === "string" ? d.url_overridden_by_dest : "";
     const title = typeof d.title === "string" ? d.title : "Crypto meme";
     const id = typeof d.id === "string" ? `rd_${d.id}` : `rd_${Math.random()}`;
 
-    // נסנן רק תמונות אמיתיות (לא וידאו)
     if (directUrl && isImageUrl(directUrl)) {
       items.push({ id, title, url: directUrl });
     }
@@ -60,8 +56,6 @@ async function getRedditMemes(): Promise<MemeItem[]> {
 }
 
 export async function getMeme(params: { mode: "personalized" | "general"; investorType: string }) {
-  // mode/investorType כרגע לא באמת משנים את Reddit,
-  // אבל אנחנו מחזירים אותם כדי להיות עקביים כמו news/ai.
   try {
     const redditItems = await getRedditMemes();
     if (redditItems.length > 0) {
@@ -75,7 +69,7 @@ export async function getMeme(params: { mode: "personalized" | "general"; invest
     // ignore → fallback
   }
 
-  // fallback ל-static JSON
+  // fallback → static JSON
   const fallbackList = Array.isArray(memesFallback) ? (memesFallback as any[]) : [];
   const cleaned: MemeItem[] = fallbackList.map((m, idx) => ({
     id: String(m?.id ?? `fb_${idx}`),

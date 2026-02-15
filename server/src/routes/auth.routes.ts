@@ -10,7 +10,6 @@ const router = Router();
 router.post("/signup", async (req, res) => {
   const { name, email, password } = req.body;
 
-  // validations
   if (!isNonEmptyString(name)) {
     return res.status(400).json({ message: "Name is required" });
   }
@@ -48,11 +47,9 @@ router.post("/signup", async (req, res) => {
   });
 });
 
-
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  // ✅ validations
   if (!isNonEmptyString(email) || !isValidEmail(email)) {
     return res.status(400).json({ message: "Invalid email" });
   }
@@ -83,7 +80,6 @@ router.post("/login", async (req, res) => {
   });
 });
 
-
 router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
   const user = await User.findById(req.userId).select("_id name email");
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -92,6 +88,5 @@ router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
     user: { id: user._id, name: user.name, email: user.email },
   });
 });
-
 
 export default router;

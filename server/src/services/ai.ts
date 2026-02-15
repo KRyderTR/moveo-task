@@ -60,7 +60,6 @@ export async function getAiInsight(params: {
             headers: {
                 Authorization: `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
-                // headers מומלצים ב-OpenRouter (לא חובה, אבל נחמד)
                 "HTTP-Referer": "http://localhost",
                 "X-Title": "Moveo Task",
             },
