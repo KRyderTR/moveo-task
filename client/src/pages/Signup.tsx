@@ -105,7 +105,7 @@ export default function Signup() {
         </button>
 
         <div className="text-sm text-gray-800">
-          Already have an account?{" "}
+          Already have account?{" "}
           <Link className="underline" to="/login">
             Login
           </Link>
