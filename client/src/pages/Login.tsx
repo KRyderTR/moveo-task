@@ -25,6 +25,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid place-items-center p-4">
+      <h1 className="font-bold text-2xl text-sky-950">Welcome to AI Crypto advisor</h1>
       <form
         onSubmit={onSubmit}
         className="w-full max-w-sm bg-white rounded-2xl shadow p-6 space-y-3"
