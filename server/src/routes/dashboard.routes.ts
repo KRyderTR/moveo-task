@@ -28,38 +28,98 @@ function normalizeContentTypes(raw: unknown): ContentKey[] {
 }
 
 function normalizeAssets(raw: unknown): string[] {
-  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
+  return Array.isArray(raw)
+    ? raw.filter((x): x is string => typeof x === "string")
+    : [];
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 /* -------------------- External Data (Prices) -------------------- */
 
-async function getCoinGeckoPrices(assets: string[]) {
-  const ids = (assets.length ? assets : [...DEFAULT_ASSETS]).join(",");
+type PriceItem = { id: string; usd: number | null; change24h: number | null };
+type PricesPayload = { source: "coingecko" | "fallback"; items: PriceItem[] };
+
+function getPricesFallback(assets: string[]): PricesPayload {
+  const ids = (assets.length ? assets : [...DEFAULT_ASSETS]).slice(0, 8);
+  return {
+    source: "fallback",
+    items: ids.map((id) => ({ id, usd: null, change24h: null })),
+  };
+}
+
+async function fetchWithTimeout(url: string, ms = 8000): Promise<Response> {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ms);
+
+  try {
+    return await fetch(url, {
+      signal: ac.signal,
+      headers: {
+        // לפעמים עוזר נגד חסימות/התנהגות מוזרה בפרודקשן
+        "User-Agent": "moveo-task/1.0",
+        Accept: "application/json",
+      },
+    });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function getCoinGeckoPrices(assets: string[]): Promise<PricesPayload> {
+  const cleanAssets = (assets.length ? assets : [...DEFAULT_ASSETS]).map((a) =>
+    a.toLowerCase().trim()
+  );
+
+  const ids = cleanAssets.join(",");
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(
     ids
   )}&vs_currencies=usd&include_24hr_change=true`;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("CoinGecko failed");
+  // retry 1 פעם עם backoff קטן
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, 8000);
 
-  const json: unknown = await res.json();
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.error(
+          "CoinGecko error:",
+          res.status,
+          text.slice(0, 200)
+        );
+        throw new Error(`CoinGecko ${res.status}`);
+      }
 
-  if (!json || typeof json !== "object") {
-    return {
-      source: "coingecko",
-      items: [] as { id: string; usd: number | null; change24h: number | null }[],
-    };
+      const json: unknown = await res.json();
+
+      if (!json || typeof json !== "object") {
+        return { source: "coingecko", items: [] };
+      }
+
+      const obj = json as Record<string, { usd?: number; usd_24h_change?: number }>;
+
+      const items: PriceItem[] = Object.entries(obj).map(([id, v]) => ({
+        id,
+        usd: typeof v.usd === "number" ? v.usd : null,
+        change24h: typeof v.usd_24h_change === "number" ? v.usd_24h_change : null,
+      }));
+
+      return { source: "coingecko", items };
+    } catch (e) {
+      // אם זה attempt ראשון – נחכה קצת וננסה שוב
+      if (attempt === 0) {
+        await sleep(500);
+        continue;
+      }
+      throw e;
+    }
   }
 
-  const obj = json as Record<string, { usd?: number; usd_24h_change?: number }>;
-
-  const items = Object.entries(obj).map(([id, v]) => ({
-    id,
-    usd: typeof v.usd === "number" ? v.usd : null,
-    change24h: typeof v.usd_24h_change === "number" ? v.usd_24h_change : null,
-  }));
-
-  return { source: "coingecko", items };
+  // לא אמור להגיע לפה
+  return { source: "fallback", items: [] };
 }
 
 /* -------------------- Route -------------------- */
@@ -74,9 +134,9 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
   const userContentTypes = normalizeContentTypes(prefs.contentTypes as unknown);
   const userAssets = normalizeAssets(prefs.assets as unknown);
 
-  const investorType = typeof prefs.investorType === "string" ? prefs.investorType : "HODLer";
+  const investorType =
+    typeof prefs.investorType === "string" ? prefs.investorType : "HODLer";
 
-  // "Preference affects content quality" (not whether section exists)
   const prefers = (key: ContentKey) => userContentTypes.includes(key);
 
   const newsMode: "personalized" | "general" = prefers("news") ? "personalized" : "general";
@@ -90,20 +150,20 @@ router.get("/daily", requireAuth, async (req: AuthedRequest, res) => {
   const cached = await DailyDashboardCache.findOne({ userId: req.userId, dateKey: today }).lean();
 
   let news: any;
-  let prices: any;
+  let prices: PricesPayload;
   let aiInsight: any;
 
   if (cached) {
     news = cached.news;
-    prices = cached.prices;
+    prices = cached.prices as PricesPayload;
     aiInsight = cached.aiInsight;
   } else {
-    // Prices (CoinGecko) - keep dashboard alive if fails
+    // Prices (CoinGecko) — keep dashboard alive if fails + better fallback
     const pricesResult = await Promise.allSettled([getCoinGeckoPrices(pricesAssets)]);
     prices =
       pricesResult[0].status === "fulfilled"
         ? pricesResult[0].value
-        : { source: "fallback", items: [] as { id: string; usd: number | null; change24h: number | null }[] };
+        : getPricesFallback(pricesAssets);
 
     // News (CryptoPanic with fallback inside service)
     news = await getNews({ mode: newsMode, assets: userAssets });
