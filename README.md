@@ -1,12 +1,12 @@
-🚀 AI Crypto Advisor
+AI Crypto Advisor
 A full-stack personalized crypto dashboard that delivers daily AI-curated content based on user preferences.
 
 
-🔗 Live App:
+ Live App:
 https://moveo-task-nu.vercel.app
 
 
-🧠 What It Does
+ What It Does
 
 Users complete a short onboarding flow selecting:
 Crypto assets of interest
@@ -15,16 +15,16 @@ Preferred content types
 
 
 Based on these inputs, the app generates a daily personalized dashboard including:
-📰 Market News (CryptoPanic API)
-💰 Coin Prices (CoinGecko API)
-🤖 AI Insight of the Day (LLM via OpenRouter)
-😄 Dynamic Crypto Meme
+Market News (CryptoPanic API)
+Coin Prices (CoinGecko API)
+AI Insight of the Day (LLM via OpenRouter)
+Dynamic Crypto Meme
 
 Users can provide 👍 / 👎 feedback per section.
 Votes are stored in MongoDB and designed to support future recommendation improvements.
 
 
-🏗 Architecture
+Architecture
 
 Frontend:
 React + TypeScript
@@ -44,7 +44,7 @@ Frontend: Vercel
 Backend: Render
 
 
-✨ Key Design Decisions
+Key Design Decisions
 
 Daily caching for News, Prices, and AI Insight to simulate a “curated daily feed”
 Dynamic meme for freshness
@@ -52,7 +52,7 @@ Section-level voting stored per user per day
 Clean protected routing with onboarding guard
 
 
-🤖 AI Usage
+AI Usage
 
 ChatGPT was used for:
 Architecture validation
@@ -63,7 +63,7 @@ UX improvements
 All core implementation and debugging were handled manually.
 
 
-📦 How to Run Locally
+How to Run Locally
 
 Backend:
 
